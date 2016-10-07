@@ -23,7 +23,7 @@ public interface DocI18n
 {
     Locale getCurrentLocale();
     String getLabel(String key);
-    String getLabel(String key, Object[] args);    
+    String getLabel(String key, Object... args);
     String getLabel(Locale locale, String key);
     String getLabel(Locale locale, String key, Object[] args);    
 }
