@@ -13,11 +13,17 @@
  */
 package org.docma.coreapi;
 
+import org.docma.plugin.LogEntry;
+
 /**
+ * This is the application internal interface for log messages.
+ * This interface extends the <code>org.docma.plugin.LogEntry</code>
+ * interface, which is visible by plug-ins.
  *
  * @author MP
+ * @see org.docma.coreapi.ExportLog
  */
-public interface LogMessage 
+public interface LogMessage extends LogEntry
 {
     String   getMessage();
     boolean  isError();

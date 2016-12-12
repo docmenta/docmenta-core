@@ -17,7 +17,7 @@ package org.docma.coreapi;
  *
  * @author MP
  */
-public interface NodeInfo 
+public interface NodeInfo extends org.docma.plugin.NodeInfo
 {
     String getId();
     String getTitle();

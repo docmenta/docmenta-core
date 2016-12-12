@@ -14,13 +14,15 @@
 
 package org.docma.coreapi;
 
+import org.docma.plugin.VersionState;
+
 /**
  *
  * @author MP
  */
 public class DocVersionState
 {
-    public static final String DRAFT = "DRAFT";
-    public static final String RELEASED = "RELEASED";
-    public static final String TRANSLATION_PENDING = "TRANSLATION_PENDING";
+    public static final String DRAFT = VersionState.DRAFT.toString();
+    public static final String RELEASED = VersionState.RELEASED.toString();
+    public static final String TRANSLATION_PENDING = VersionState.TRANSLATION_PENDING.toString();
 }
