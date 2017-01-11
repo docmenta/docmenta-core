@@ -13,12 +13,14 @@
  */
 package org.docma.coreapi.implementation;
 
-import org.docma.coreapi.ExportLog;
-import org.docma.coreapi.*;
-
 import java.util.*;
 import java.text.SimpleDateFormat;
 import java.io.*;
+
+import org.docma.coreapi.ExportLog;
+import org.docma.coreapi.*;
+import org.docma.plugin.LogLevel;
+import org.docma.util.XMLParser;
 
 /**
  *
@@ -47,11 +49,14 @@ public class DefaultLog implements ExportLog
         this.locale = loc;
     }
 
+    
+    /* ----------- Interface ExportLog ---------- */
+
     @Override
     public void infoMsg(String message)
     {
         long timestamp = System.currentTimeMillis();
-        DocmaLogMessage log_msg = new DocmaLogMessage(timestamp, DocmaLogMessage.SEVERITY_INFO, message);
+        DocmaLogMessage log_msg = new DocmaLogMessage(timestamp, LogLevel.INFO, message);
         logList.add(log_msg);
         cnt_Info++;
     }
@@ -59,11 +64,7 @@ public class DefaultLog implements ExportLog
     @Override
     public void info(String location, String message_key, Object[] args)
     {
-        String message = i18n.getLabel(locale, message_key, args);
-        // if (args != null) message = MessageFormat.format(message, args);
-        if ((location != null) && !location.equals("")) {
-            message = location + ": \n" + message;
-        }
+        String message = formatMsg(location, message_key, args);
         infoMsg(message);
     }
 
@@ -83,7 +84,7 @@ public class DefaultLog implements ExportLog
     public void warningMsg(String message)
     {
         long timestamp = System.currentTimeMillis();
-        DocmaLogMessage log_msg = new DocmaLogMessage(timestamp, DocmaLogMessage.SEVERITY_WARNING, message);
+        DocmaLogMessage log_msg = new DocmaLogMessage(timestamp, LogLevel.WARNING, message);
         logList.add(log_msg);
         cnt_Warning++;
     }
@@ -91,11 +92,7 @@ public class DefaultLog implements ExportLog
     @Override
     public void warning(String location, String message_key, Object[] args)
     {
-        String message = i18n.getLabel(locale, message_key, args);
-        // if (args != null) message = MessageFormat.format(message, args);
-        if ((location != null) && !location.equals("")) {
-            message = location + ": \n" + message;
-        }
+        String message = formatMsg(location, message_key, args);
         warningMsg(message);
     }
 
@@ -115,7 +112,7 @@ public class DefaultLog implements ExportLog
     public void errorMsg(String message)
     {
         long timestamp = System.currentTimeMillis();
-        DocmaLogMessage log_msg = new DocmaLogMessage(timestamp, DocmaLogMessage.SEVERITY_ERROR, message);
+        DocmaLogMessage log_msg = new DocmaLogMessage(timestamp, LogLevel.ERROR, message);
         logList.add(log_msg);
         cnt_Error++;
     }
@@ -123,11 +120,7 @@ public class DefaultLog implements ExportLog
     @Override
     public void error(String location, String message_key, Object[] args)
     {
-        String message = i18n.getLabel(locale, message_key, args);
-        // if (args != null) message = MessageFormat.format(message, args);
-        if ((location != null) && !location.equals("")) {
-            message = location + ": \n" + message;
-        }
+        String message = formatMsg(location, message_key, args);
         errorMsg(message);
     }
 
@@ -179,14 +172,6 @@ public class DefaultLog implements ExportLog
         return cnt_Warning;
     }
 
-    public void clear()
-    {
-        logList.clear();
-        cnt_Info = 0;
-        cnt_Warning = 0;
-        cnt_Error = 0;
-    }
-
     @Override
     public LogMessage[] getLog(boolean infos, boolean warnings, boolean errors)
     {
@@ -208,6 +193,30 @@ public class DefaultLog implements ExportLog
         return (LogMessage[]) resultList.toArray(arr);
     }
 
+
+    /* ----------- Other public methods ---------- */
+
+    public void add(LogLevel level, String generator, String msg, Object[] args)
+    {
+        add(level, generator, null, msg, args);
+    }
+    
+    public void add(LogLevel level, String generator, String location, String msg, Object[] args)
+    {
+        long timestamp = System.currentTimeMillis();
+        String message = formatMsg(location, msg, args);
+        DocmaLogMessage log_msg = new DocmaLogMessage(timestamp, level, message, generator);
+        addLogMsg(log_msg);
+    }
+    
+    public void clear()
+    {
+        logList.clear();
+        cnt_Info = 0;
+        cnt_Warning = 0;
+        cnt_Error = 0;
+    }
+
     public void storeToXML(OutputStream out) throws IOException
     {
         OutputStreamWriter writer = new OutputStreamWriter(out, "UTF-8");
@@ -219,25 +228,20 @@ public class DefaultLog implements ExportLog
             // String msg = log_msg.getMessage().replace('\n', ' ').replace('\r', ' ');
             String msg = log_msg.getMessage();
             msg = (msg == null) ? "" : msg.replace("<", "&lt;").replace(">", "&gt;");
-            int sev = log_msg.getSeverity();
-            String sev_str;
-            switch (sev) {
-                case DocmaLogMessage.SEVERITY_ERROR:
-                    sev_str = "error";
-                    break;
-                case DocmaLogMessage.SEVERITY_WARNING:
-                    sev_str = "warning";
-                    break;
-                case DocmaLogMessage.SEVERITY_INFO:
-                    sev_str = "info";
-                    break;
-                default:
-                    sev_str = "" + sev;
-                    break;
+            LogLevel lev = log_msg.getLevel();
+            if (lev == null) {
+                lev = LogLevel.INFO;
             }
-            String line = "<message timestamp=\"" + log_msg.getTimestamp() +
-                          "\" severity=\"" + sev_str + "\">" + msg + "</message>\n";
-            writer.write(line);
+            String gen = log_msg.getGenerator();
+            StringBuilder line = new StringBuilder(msg.length() + 150);
+            line.append("<message timestamp=\"")
+                .append(log_msg.getTimestamp())
+                .append("\" severity=\"").append(lev.name()).append("\"");
+            if ((gen != null) && !gen.equals("")) {
+                line.append(" generator=\"").append(gen).append("\"");
+            }
+            line.append(">").append(msg) .append("</message>\n");
+            writer.write(line.toString());
         }
         writer.write("</log>\n");
         writer.close();
@@ -259,55 +263,63 @@ public class DefaultLog implements ExportLog
         reader.close();
 
         // Parse log string and create DocmaLogMessage objects
-        final String MESSAGE_PATTERN = "<message ";
-        final String TIMESTAMP_PATTERN = " timestamp=\"";
-        final String SEVERITY_PATTERN = " severity=\"";
+        final String MESSAGE_PATTERN = "<message";
+        final String ATT_TIMESTAMP = "timestamp";
+        final String ATT_SEVERITY = "severity";
+        final String ATT_GENERATOR = "generator";
         int searchpos = 0;
+        List<String> attNames = new ArrayList();
+        List<String> attValues = new ArrayList();
         while (true) {
             searchpos = logstr.indexOf(MESSAGE_PATTERN, searchpos);
             if (searchpos < 0) break;
 
             int tagstart = searchpos;
-            int tagend = logstr.indexOf(">", searchpos);
+            int attstart = tagstart + MESSAGE_PATTERN.length();
+            
+            if (attstart >= logstr.length()) {
+                throw new DocException("Invalid log file format: unexpected end of log.");
+            }
+            char ch = logstr.charAt(attstart);
+            if (! Character.isWhitespace(ch)) {  // <message has to be followed by whitespace
+                searchpos = attstart;
+                continue;
+            }
+            
+            int tagend = XMLParser.parseTagAttributes(logstr, attstart, attNames, attValues); // logstr.indexOf(">", searchpos);
             if (tagend < 0) {
                 throw new DocException("Invalid log file format!");
             }
-            searchpos = tagend;
-            String attribs = logstr.substring(tagstart, tagend);
+            searchpos = tagend;  // in next loop continue with next message
 
             long timestamp = 0;
-            int p1 = attribs.indexOf(TIMESTAMP_PATTERN);
-            if (p1 >= 0) {
-                p1 = p1 + TIMESTAMP_PATTERN.length();
-                int p2 = attribs.indexOf('"', p1);
-                if (p2 < 0) p2 = attribs.length();
-                String time_str = attribs.substring(p1, p2);
+            int idxTime = attNames.indexOf(ATT_TIMESTAMP);
+            if (idxTime >= 0) {   // timestamp attribute exists
+                String timeStr = attValues.get(idxTime);
                 try {
-                    timestamp = Long.parseLong(time_str);
+                    timestamp = Long.parseLong(timeStr);
                 } catch (Exception ex) {
-                    System.out.println("Warning: Log message has invalid timestamp:" + time_str);
+                    System.out.println("Warning: Log message has invalid timestamp:" + timeStr);
                 }
             } else {
                 System.out.println("Warning: Log message has no timestamp.");
             }
 
-            int sev = DocmaLogMessage.SEVERITY_INFO;
-            p1 = attribs.indexOf(SEVERITY_PATTERN);
-            if (p1 >= 0) {
-                p1 = p1 + SEVERITY_PATTERN.length();
-                int p2 = attribs.indexOf('"', p1);
-                if (p2 < 0) p2 = attribs.length();
-                String sev_str = attribs.substring(p1, p2);
-                if (sev_str.equals("error")) sev = DocmaLogMessage.SEVERITY_ERROR;
-                else if (sev_str.equals("warning")) sev = DocmaLogMessage.SEVERITY_WARNING;
-                else if (sev_str.equals("info")) sev = DocmaLogMessage.SEVERITY_INFO;
-                else {
-                    try {
-                        sev = Integer.parseInt(sev_str);
-                    } catch (Exception ex) {}
-                }
+            LogLevel lev = LogLevel.INFO;
+            int idxSeverity = attNames.indexOf(ATT_SEVERITY);
+            if (idxSeverity >= 0) {  // severity attribute exists
+                String sev_str = attValues.get(idxSeverity).toUpperCase();
+                if (sev_str.equals("INFO")) lev = LogLevel.INFO;
+                else if (sev_str.equals("WARNING")) lev = LogLevel.WARNING;
+                else if (sev_str.equals("ERROR")) lev = LogLevel.ERROR;
             } else {
                 System.out.println("Warning: Log message has no severity.");
+            }
+            
+            String generator = null;
+            int idxGenerator = attNames.indexOf(ATT_GENERATOR);
+            if (idxGenerator >= 0) {  // generator attribute exists
+                generator = attValues.get(idxGenerator);
             }
 
             int msgend = logstr.indexOf("</message>", tagend);
@@ -316,7 +328,7 @@ public class DefaultLog implements ExportLog
             }
             String msg = logstr.substring(tagend + 1, msgend);
 
-            DocmaLogMessage logmsg = new DocmaLogMessage(timestamp, sev, msg);
+            DocmaLogMessage logmsg = new DocmaLogMessage(timestamp, lev, msg, generator);
             export_log.addLogMsg(logmsg);
 
             searchpos = msgend;
@@ -354,8 +366,8 @@ public class DefaultLog implements ExportLog
             }
             else {
                 if (log_msg instanceof DocmaLogMessage) {
-                    int sev = ((DocmaLogMessage) log_msg).getSeverity();
-                    sev_str = "SEVERITY: " + sev;
+                    LogLevel lev = ((DocmaLogMessage) log_msg).getLevel();
+                    sev_str = lev.name();
                 } else {
                     sev_str = "";
                 }
@@ -363,9 +375,20 @@ public class DefaultLog implements ExportLog
             }
             Date dt = new Date(log_msg.getTimestamp());
             String dt_str = dateformat.format(dt);
+            
+            String generator = null;
+            if (log_msg instanceof DocmaLogMessage) {
+                generator = ((DocmaLogMessage) log_msg).getGenerator();
+            }
+            
             writer.write(dt_str);
             writer.write(": ");
             writer.write(sev_str);
+            if ((generator != null) && !generator.equals("")) {
+                writer.write(" [");
+                writer.write(generator);
+                writer.write("]");
+            }
             writer.write("</div>");
             // writer.write("<br>");
             // String msg = log_msg.getMessage().replace('\n', ' ').replace('\r', ' ');
@@ -394,4 +417,16 @@ public class DefaultLog implements ExportLog
         else if (logmsg.isError()) cnt_Error++;
     }
 
+    private String formatMsg(String location, String msg, Object[] args)
+    {
+        String message = i18n.getLabel(locale, msg, args);
+        if ((message == null) || message.equals("")) {  // msg is no ressource key?
+            message = msg;
+        }
+        if ((location != null) && !location.equals("")) {
+            return location + ": \n" + message;
+        } else {
+            return message;
+        }
+    }
 }

@@ -15,6 +15,7 @@
 package org.docma.coreapi.implementation;
 
 import org.docma.coreapi.*;
+import org.docma.plugin.LogLevel;
 
 /**
  *
@@ -22,19 +23,22 @@ import org.docma.coreapi.*;
  */
 public class DocmaLogMessage implements LogMessage
 {
-    public static final int SEVERITY_INFO = 1;
-    public static final int SEVERITY_WARNING = 2;
-    public static final int SEVERITY_ERROR = 3;
+    private final long timestamp;
+    private final LogLevel level;
+    private final String message;
+    private final String generator;
 
-    private long timestamp;
-    private int severity;
-    private String message;
-
-    public DocmaLogMessage(long timestamp, int severity, String message)
+    public DocmaLogMessage(long timestamp, LogLevel level, String message)
+    {
+        this(timestamp, level, message, null);
+    }
+    
+    public DocmaLogMessage(long timestamp, LogLevel level, String message, String generator)
     {
         this.timestamp = timestamp;
-        this.severity = severity;
+        this.level = level;
         this.message = message;
+        this.generator = generator;
     }
 
     public String getMessage()
@@ -42,24 +46,24 @@ public class DocmaLogMessage implements LogMessage
         return message;
     }
 
-    public int getSeverity()
+    public LogLevel getLevel()
     {
-        return severity;
+        return level;
     }
 
     public boolean isInfo()
     {
-        return severity == SEVERITY_INFO;
+        return level == LogLevel.INFO;
     }
 
     public boolean isWarning()
     {
-        return severity == SEVERITY_WARNING;
+        return level == LogLevel.WARNING;
     }
 
     public boolean isError()
     {
-        return severity == SEVERITY_ERROR;
+        return level == LogLevel.ERROR;
     }
 
     public long getTimestamp()
@@ -67,4 +71,8 @@ public class DocmaLogMessage implements LogMessage
         return timestamp;
     }
 
+    public String getGenerator()
+    {
+        return generator;
+    }
 }

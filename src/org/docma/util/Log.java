@@ -46,19 +46,48 @@ public class Log {
         logger.setLevel(loglevel);
     }
 
-    public static void info(String msg) {
-        logger.info(msg);
+    public static void info(String msg) 
+    {
+        logger.log(Level.INFO, msg);
+    }
+    
+    public static void info(String msg, Object... args) 
+    {
+        // logger.info(msg);
+        logger.log(Level.INFO, msg, args);
     }
 
-    public static void warning(String msg) {
-        logger.warning(msg);
+    public static void warning(String msg) 
+    {
+        logger.log(Level.WARNING, msg);
     }
 
-    public static void error(String msg) {
-        logger.severe(msg);
+    public static void warning(String msg, Object... args) 
+    {
+        // logger.warning(msg);
+        logger.log(Level.WARNING, msg, args);
     }
 
-    public static void debug(String msg) {
-        logger.finest(msg);
+    public static void error(String msg) 
+    {
+        logger.log(Level.SEVERE, msg);
+    }
+
+    public static void error(String msg, Object... args) 
+    {
+        // logger.severe(msg);
+        logger.log(Level.SEVERE, msg, args);
+    }
+
+    public static void debug(String msg) 
+    {
+        // logger.finest(msg);
+        logger.log(Level.FINEST, msg);
+    }
+
+    public static void debug(String msg, Object... args) 
+    {
+        // logger.finest(msg);
+        logger.log(Level.FINEST, msg, args);
     }
 }
