@@ -14,6 +14,7 @@
 package org.docma.coreapi;
 
 import org.docma.plugin.LogEntry;
+import org.docma.plugin.LogLevel;
 
 /**
  * This is the application internal interface for log messages.
@@ -26,8 +27,10 @@ import org.docma.plugin.LogEntry;
 public interface LogMessage extends LogEntry
 {
     String   getMessage();
+    LogLevel getLevel();
     boolean  isError();
     boolean  isWarning();
     boolean  isInfo();
     long     getTimestamp();
+    String   getGenerator();
 }

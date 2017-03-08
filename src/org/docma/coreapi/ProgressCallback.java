@@ -13,6 +13,9 @@
  */
 package org.docma.coreapi;
 
+import org.docma.plugin.LogEntry;
+import org.docma.plugin.LogLevel;
+
 /**
  *
  * @author MP
@@ -38,16 +41,26 @@ public interface ProgressCallback
     void    setFinished();
     boolean isFinished();
     
-    void     logError(String labelKey, Object... args);
+    void log(LogEntry entry);
+    void log(LogLevel level, String msg, Object[] args);
+    void log(LogLevel level, String generator, String msg, Object[] args);
+    void log(LogLevel level, String generator, String location, String msg, Object[] args);
+    
+    void     logError(String msg, Object... args);
     int      getErrorCount();
 
-    void     logWarning(String labelKey, Object... args);
+    void     logWarning(String msg, Object... args);
     int      getWarningCount();
     
-    void     logInfo(String labelKey, Object... args);
+    void     logInfo(String msg, Object... args);
     int      getInfoCount();
+
+    void     logHeader(int headLevel, String msg, Object... args);
     
-    LogMessage[] getLog(boolean infos, boolean warnings, boolean errors);
+    int getLogCount();
+    LogEntry[] getLog();
+    LogEntry[] getLog(int fromIndex, int toIndex);
+    LogEntry[] getLog(boolean infos, boolean warnings, boolean errors);
 
     boolean getCancelFlag();
     void    setCancelFlag(boolean cancelFlag); 

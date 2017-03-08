@@ -19,6 +19,7 @@ import java.io.*;
 
 import org.docma.coreapi.ExportLog;
 import org.docma.coreapi.*;
+import org.docma.plugin.LogEntry;
 import org.docma.plugin.LogLevel;
 import org.docma.util.XMLParser;
 
@@ -28,7 +29,7 @@ import org.docma.util.XMLParser;
  */
 public class DefaultLog implements ExportLog 
 {
-    private final ArrayList<LogMessage> logList = new ArrayList<LogMessage>(100);
+    private final List<LogMessage> logList = Collections.synchronizedList(new ArrayList<LogMessage>(100));
     private DocI18n i18n = null;
     private Locale locale = null;
     private int cnt_Info = 0;
@@ -172,10 +173,35 @@ public class DefaultLog implements ExportLog
         return cnt_Warning;
     }
 
+    public int getLogCount()
+    {
+        return logList.size();
+    }
+    
+    public LogMessage[] getLog()
+    {
+        return logList.toArray(new LogMessage[logList.size()]);
+    }
+    
+    public LogMessage[] getLog(int fromIndex, int toIndex)
+    {
+        if (toIndex > logList.size()) {
+            toIndex = logList.size();
+        }
+        if (toIndex <= fromIndex) {
+            return new LogMessage[0];
+        }
+        LogMessage[] res = new LogMessage[toIndex - fromIndex];
+        for (int i = 0; i < res.length; i++) {
+            res[i] = logList.get(fromIndex + i);
+        }
+        return res;
+    }
+    
     @Override
     public LogMessage[] getLog(boolean infos, boolean warnings, boolean errors)
     {
-        ArrayList resultList;
+        List resultList;
         if (infos && warnings && errors) {
             resultList = logList;
         } else {
@@ -209,6 +235,15 @@ public class DefaultLog implements ExportLog
         addLogMsg(log_msg);
     }
     
+    public void addHeader(int level, String msg, Object[] args)
+    {
+        long timestamp = System.currentTimeMillis();
+        String message = formatMsg(null, msg, args);
+        DocmaLogMessage log_msg = new DocmaLogMessage(timestamp, LogLevel.INFO, message);
+        log_msg.setType("header" + ((level < 0) ? 0 : level));
+        addLogMsg(log_msg);
+    }
+    
     public void clear()
     {
         logList.clear();
@@ -233,12 +268,16 @@ public class DefaultLog implements ExportLog
                 lev = LogLevel.INFO;
             }
             String gen = log_msg.getGenerator();
+            String msgType = log_msg.getType();
             StringBuilder line = new StringBuilder(msg.length() + 150);
             line.append("<message timestamp=\"")
                 .append(log_msg.getTimestamp())
                 .append("\" severity=\"").append(lev.name()).append("\"");
             if ((gen != null) && !gen.equals("")) {
                 line.append(" generator=\"").append(gen).append("\"");
+            }
+            if ((msgType != null) && !msgType.equals("")) {
+                line.append(" type=\"").append(msgType).append("\"");
             }
             line.append(">").append(msg) .append("</message>\n");
             writer.write(line.toString());
@@ -267,6 +306,7 @@ public class DefaultLog implements ExportLog
         final String ATT_TIMESTAMP = "timestamp";
         final String ATT_SEVERITY = "severity";
         final String ATT_GENERATOR = "generator";
+        final String ATT_TYPE = "type";
         int searchpos = 0;
         List<String> attNames = new ArrayList();
         List<String> attValues = new ArrayList();
@@ -322,6 +362,12 @@ public class DefaultLog implements ExportLog
                 generator = attValues.get(idxGenerator);
             }
 
+            String msgType = null;
+            int idxType = attNames.indexOf(ATT_TYPE);
+            if (idxType >= 0) {  // type attribute exists
+                msgType = attValues.get(idxType);
+            }
+
             int msgend = logstr.indexOf("</message>", tagend);
             if (msgend < 0) {
                 throw new DocException("Invalid log file format: missing end tag.");
@@ -329,6 +375,9 @@ public class DefaultLog implements ExportLog
             String msg = logstr.substring(tagend + 1, msgend);
 
             DocmaLogMessage logmsg = new DocmaLogMessage(timestamp, lev, msg, generator);
+            if (msgType != null) {
+                logmsg.setType(msgType);
+            }
             export_log.addLogMsg(logmsg);
 
             searchpos = msgend;
@@ -337,57 +386,49 @@ public class DefaultLog implements ExportLog
 
     public String toHTMLString()
     {
-        return toHTMLString(this.logList);
+        return toHTMLString(logList.toArray(new LogEntry[logList.size()]));
     }
     
-    public static String toHTMLString(List<LogMessage> log_list)
+    public static String toHTMLString(List<LogEntry> log_entries)
+    {
+        return toHTMLString(log_entries.toArray(new LogEntry[log_entries.size()]));
+    }
+    
+    public static String toHTMLString(LogEntry[] log_arr)
     {
         SimpleDateFormat dateformat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
         StringWriter writer = new StringWriter();
-        // writer.write("<html>\n");
-        // writer.write("<body>\n");
-        for (int i=0; i < log_list.size(); i++) {
+        for (LogEntry log_msg : log_arr) {
+            String msgType = log_msg.getType();
+            String msg = log_msg.getMessage();
+            msg = (msg == null) ? "" : msg.replace("<", "&lt;").replace(">", "&gt;");
+            if ((msgType != null) && msgType.startsWith("header")) {
+                writeHeader(writer, msgType, msg);
+                continue;
+            }
             writer.write("<div class=\"log_msg\">\n");
-            LogMessage log_msg = log_list.get(i);
-            String sev_str;
-            writer.write("<div class=\"");
-            if (log_msg.isError()) {
-                sev_str = "ERROR";
-                writer.write("msg_head_error\">");
+            LogLevel level = log_msg.getLevel();
+            if (level == null) {
+                level = LogLevel.INFO;
             }
-            else if (log_msg.isWarning()) {
-                sev_str = "WARNING";
-                writer.write("msg_head_warning\">");
-            }
-            else if (log_msg.isInfo()) {
-                sev_str = "INFO";
-                writer.write("msg_head_info\">");
-            }
-            else {
-                if (log_msg instanceof DocmaLogMessage) {
-                    LogLevel lev = ((DocmaLogMessage) log_msg).getLevel();
-                    sev_str = lev.name();
-                } else {
-                    sev_str = "";
-                }
-                writer.write("msg_head_info\">");
-            }
+            String sev_str = level.name();
+            writer.write("<div class=\"msg_head_");
+            writer.write(sev_str.toLowerCase());
+            writer.write("\">");
+            
             Date dt = new Date(log_msg.getTimestamp());
             String dt_str = dateformat.format(dt);
+            String generator = log_msg.getGenerator();
             
-            String generator = null;
-            if (log_msg instanceof DocmaLogMessage) {
-                generator = ((DocmaLogMessage) log_msg).getGenerator();
-            }
-            
+            writer.write("[");
             writer.write(dt_str);
-            writer.write(": ");
+            writer.write("] ");
             writer.write(sev_str);
             if ((generator != null) && !generator.equals("")) {
-                writer.write(" [");
+                writer.write(" \"");
                 writer.write(generator);
-                writer.write("]");
+                writer.write("\"");
             }
             writer.write("</div>");
             // writer.write("<br>");
@@ -395,21 +436,18 @@ public class DefaultLog implements ExportLog
             // writer.write(msg);
             // writer.write("\n</p>\n");
             writer.write("<pre class=\"msg_content\">");
-            String msg = log_msg.getMessage();
-            msg = (msg == null) ? "" : msg.replace("<", "&lt;").replace(">", "&gt;");
             writer.write(msg);
             writer.write("</pre></div>\n");
         }
-        // writer.write("</body></html>\n");
         try {
             writer.close();
         } catch (IOException ex) {}
         return writer.toString();
     }
 
-    /* --------------  private methods  ---------------------- */
+    /* --------------  package local methods  ---------------------- */
 
-    private void addLogMsg(DocmaLogMessage logmsg)
+    void addLogMsg(DocmaLogMessage logmsg)
     {
         logList.add(logmsg);
         if (logmsg.isInfo()) cnt_Info++;
@@ -417,6 +455,17 @@ public class DefaultLog implements ExportLog
         else if (logmsg.isError()) cnt_Error++;
     }
 
+    /* --------------  private methods  ---------------------- */
+    
+    private static void writeHeader(StringWriter writer, String msgType, String msg)
+    {
+        writer.write("<div class=\"log_");
+        writer.write(msgType);
+        writer.write("\">");
+        writer.write(msg);
+        writer.write("</div>\n");
+    }
+    
     private String formatMsg(String location, String msg, Object[] args)
     {
         String message = i18n.getLabel(locale, msg, args);

@@ -15,6 +15,8 @@ package org.docma.coreapi.implementation;
 
 import java.util.Arrays;
 import org.docma.coreapi.*;
+import org.docma.plugin.LogEntry;
+import org.docma.plugin.LogLevel;
 
 /**
  *
@@ -199,6 +201,31 @@ public class DefaultProgressCallback implements ProgressCallback
         this.cancelFlag = flag;
     }
 
+    public void log(LogEntry entry)
+    {
+        if (entry instanceof DocmaLogMessage) {
+            log.addLogMsg((DocmaLogMessage) entry);
+        } else {
+            log.addLogMsg(new DocmaLogMessage(entry.getTimestamp(), entry.getLevel(), 
+                                              entry.getMessage(), entry.getGenerator()));
+        }
+    }
+    
+    public void log(LogLevel level, String msg, Object[] args) 
+    {
+        log.add(level, null, msg, args);
+    }
+    
+    public void log(LogLevel level, String generator, String msg, Object[] args) 
+    {
+        log.add(level, generator, msg, args);
+    }
+    
+    public void log(LogLevel level, String generator, String location, String msg, Object[] args) 
+    {
+        log.add(level, generator, location, msg, args);
+    }
+
     public void logError(String labelKey, Object... labelArgs) 
     {
         log.error(labelKey, labelArgs);
@@ -229,7 +256,27 @@ public class DefaultProgressCallback implements ProgressCallback
         return log.getInfoCount();
     }
 
-    public LogMessage[] getLog(boolean infos, boolean warnings, boolean errors)
+    public void logHeader(int headLevel, String msg, Object... args)
+    {
+        log.addHeader(headLevel, msg, args);
+    }
+    
+    public int getLogCount()
+    {
+        return log.getLogCount();
+    }
+    
+    public LogEntry[] getLog() 
+    {
+        return log.getLog();
+    }
+    
+    public LogEntry[] getLog(int fromIndex, int toIndex)
+    {
+        return log.getLog(fromIndex, toIndex);
+    }
+
+    public LogEntry[] getLog(boolean infos, boolean warnings, boolean errors)
     {
         return log.getLog(infos, warnings, errors);
     }

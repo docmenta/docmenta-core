@@ -164,6 +164,24 @@ public class DocmaUtil
         // return buf.toString();
     }
 
+    public static String readFilesToString(File[] files, String sep) throws IOException
+    {
+        if ((files == null) || (files.length == 0)) {
+            return "";
+        } else if (files.length == 1) {
+            return DocmaUtil.readFileToString(files[0]);
+        } else {
+            StringBuilder sb = new StringBuilder(DocmaUtil.readFileToString(files[0]));
+            for (int i = 1; i < files.length; i++) {
+                if (sep != null) { 
+                    sb.append(sep);
+                }
+                sb.append(DocmaUtil.readFileToString(files[i]));
+            }
+            return sb.toString();
+        }
+    }
+    
     public static void writeStringToFile(String str, File fileout, String charsetName)
     throws IOException
     {
