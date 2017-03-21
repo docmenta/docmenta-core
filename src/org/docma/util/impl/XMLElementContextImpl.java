@@ -130,6 +130,12 @@ public class XMLElementContextImpl implements XMLElementContext
         return attValues.get(idx);
     }
 
+    public String getAttributeValue(String attName) 
+    {
+        int idx = getAttributeIndex(attName);
+        return (idx < 0) ? null : attValues.get(idx);
+    }
+
     public int getCharacterOffset() 
     {
         return openTagStart;

@@ -7,7 +7,6 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.docma.util.XMLElementContext;
 import org.docma.util.XMLElementHandler;
 import org.docma.util.XMLParseException;
 import org.docma.util.XMLParser;
@@ -23,6 +22,7 @@ public class SimpleXMLProcessor implements XMLProcessor
     private String input = null;
     private boolean ignoreElementCase = true;
     private boolean ignoreAttributeCase = true;
+    private XMLElementHandler default_handler = null;
     private final Map<String, XMLElementHandler> handlers = new HashMap<String, XMLElementHandler>();
     private final List<XMLElementContextImpl> elements = new ArrayList<XMLElementContextImpl>();
 
@@ -34,6 +34,11 @@ public class SimpleXMLProcessor implements XMLProcessor
         } else {
             handlers.put(key, handler);
         }
+    }
+
+    public void setElementHandler(XMLElementHandler handler) 
+    {
+        default_handler = handler;
     }
 
     public boolean isIgnoreElementCase() 
@@ -86,6 +91,9 @@ public class SimpleXMLProcessor implements XMLProcessor
                 }
                 String key = elementKey(ctx.getElementName());
                 XMLElementHandler h = handlers.get(key);
+                if (h == null) {
+                    h = default_handler;
+                }
                 if (h != null) {
                     h.processElement(ctx);
                     if (output != null) {
@@ -169,7 +177,7 @@ public class SimpleXMLProcessor implements XMLProcessor
             if (nextType == XMLParser.START_ELEMENT) {
                 String tagName = xmlParser.getElementName();
                 String key = elementKey(tagName);
-                if (handlers.containsKey(key)) {
+                if ((default_handler != null) || handlers.containsKey(key)) {
                     int tagStart = xmlParser.getStartOffset();
                     int tagEnd = xmlParser.getEndOffset();
                     boolean isEmpty = xmlParser.isEmptyElement();

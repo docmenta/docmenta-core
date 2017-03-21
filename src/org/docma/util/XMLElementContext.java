@@ -12,6 +12,7 @@ public interface XMLElementContext
     int getAttributeIndex(String attName);
     String getAttributeName(int idx);
     String getAttributeValue(int idx);
+    String getAttributeValue(String attName);
     int getCharacterOffset();
     String getElementContent();
     
