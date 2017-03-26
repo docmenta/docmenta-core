@@ -37,8 +37,8 @@ public class XMLParser
     private int endOffset;
     private String elementName;
     private boolean isEmptyElem;
-    private List attNames = null;
-    private List attValues = null;
+    private List<String> attNames = null;
+    private List<String> attValues = null;
 
     private boolean skipComments = true;
     private boolean skipPIs = true;
@@ -66,7 +66,7 @@ public class XMLParser
         this.isEmptyElem = false;
     }
 
-    public int next() throws Exception
+    public int next() throws XMLParseException
     {
         final String DOCTYPE_START = "<!DOCTYPE";
         final String COMMENT_START = "<!--";
@@ -186,6 +186,16 @@ public class XMLParser
             values.clear();
             names.addAll(attNames);
             values.addAll(attValues);
+        }
+    }
+
+    public void getAttributes(Map<String, String> attMap)
+    {
+        if (nextType == START_ELEMENT) {
+            attMap.clear();
+            for (int i = 0; i < attNames.size(); i++) {
+                attMap.put(attNames.get(i), attValues.get(i));
+            }
         }
     }
 
@@ -322,14 +332,14 @@ public class XMLParser
     private void initAttributes()
     {
         if (attNames == null) {
-            attNames = new ArrayList(16);
-            attValues = new ArrayList(16);
+            attNames = new ArrayList<String>(16);
+            attValues = new ArrayList<String>(16);
         }
     }
 
-    private void createException(String msg) throws Exception
+    private void createException(String msg) throws XMLParseException
     {
-        throw new Exception("XML parse error at character position " + cursorPos + ": " + msg);
+        throw new XMLParseException("XML parse error at character position " + cursorPos + ": " + msg);
     }
 
 }
