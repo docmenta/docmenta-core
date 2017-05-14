@@ -28,6 +28,7 @@ public class DocmaLogMessage implements LogMessage
     private final String message;
     private final String generator;
     private String msgType = null;
+    private String msgTitle = null;
 
     public DocmaLogMessage(long timestamp, LogLevel level, String message)
     {
@@ -82,10 +83,20 @@ public class DocmaLogMessage implements LogMessage
         return msgType;
     }
     
+    public String getTitle()
+    {
+        return msgTitle;
+    }
+    
     /* ----------- Package local methods ---------- */
     
     void setType(String msgType)
     {
         this.msgType = msgType;
+    }
+
+    void setTitle(String title)
+    {
+        this.msgTitle = title;
     }
 }

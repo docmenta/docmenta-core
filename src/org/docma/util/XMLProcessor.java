@@ -45,6 +45,8 @@ public interface XMLProcessor
     void setIgnoreElementCase(boolean ignore);
     boolean isIgnoreAttributeCase();
     void setIgnoreAttributeCase(boolean ignore);
+    boolean isCheckWellformed();
+    void setCheckWellformed(boolean enable);
     void process(String input) throws XMLParseException;
     void process(String input, Appendable output) throws XMLParseException, IOException;
 }

@@ -20,6 +20,6 @@ package org.docma.coreapi;
  */
 public class DocConstants
 {
-    public static final boolean DEBUG = true;
+    public static final boolean DEBUG = false;
     public static final String DEBUG_DIR = "c:\\TEMP";
 }

@@ -261,6 +261,11 @@ public class DefaultProgressCallback implements ProgressCallback
         log.addHeader(headLevel, msg, args);
     }
     
+    public void logText(String headline, String txt)
+    {
+        log.addPreformatted(headline, txt);
+    }
+    
     public int getLogCount()
     {
         return log.getLogCount();

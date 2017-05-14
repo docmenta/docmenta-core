@@ -22,6 +22,7 @@ public class SimpleXMLProcessor implements XMLProcessor
     private String input = null;
     private boolean ignoreElementCase = true;
     private boolean ignoreAttributeCase = true;
+    private boolean checkWellformed = false;
     private XMLElementHandler default_handler = null;
     private final Map<String, XMLElementHandler> handlers = new HashMap<String, XMLElementHandler>();
     private final List<XMLElementContextImpl> elements = new ArrayList<XMLElementContextImpl>();
@@ -60,7 +61,17 @@ public class SimpleXMLProcessor implements XMLProcessor
     {
         ignoreAttributeCase = ignore;
     }
+    
+    public boolean isCheckWellformed()
+    {
+        return checkWellformed;
+    }
 
+    public void setCheckWellformed(boolean enabled) 
+    {
+        checkWellformed = enabled;
+    }
+    
     public void process(String input) throws XMLParseException 
     {
         try {
@@ -195,12 +206,25 @@ public class SimpleXMLProcessor implements XMLProcessor
             } else if (nextType == XMLParser.END_ELEMENT) {
                 String tagName = xmlParser.getElementName();
                 XMLElementContextImpl ctx;
-                while ((ctx = openElements.pollLast()) != null) {
-                    if (sameElementName(tagName, ctx.getElementName())) {
+                if (checkWellformed) {
+                    ctx = openElements.pollLast();
+                    if ((ctx != null) && sameElementName(tagName, ctx.getElementName())) {
                         int tagStart = xmlParser.getStartOffset();
                         int tagEnd = xmlParser.getEndOffset();
                         ctx.setClosingTagOffset(tagStart, tagEnd);
-                        break;
+                    } else {
+                        throw new XMLParseException("Closing tag '" + tagName + 
+                                                    "' has no matching opening tag!");
+                    }
+                } else {
+                    // Find previous opening tag with same name (if existent)
+                    while ((ctx = openElements.pollLast()) != null) {
+                        if (sameElementName(tagName, ctx.getElementName())) {
+                            int tagStart = xmlParser.getStartOffset();
+                            int tagEnd = xmlParser.getEndOffset();
+                            ctx.setClosingTagOffset(tagStart, tagEnd);
+                            break;
+                        }
                     }
                 }
             } else if (nextType == XMLParser.FINISHED) {

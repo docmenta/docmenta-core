@@ -244,6 +244,17 @@ public class DefaultLog implements ExportLog
         addLogMsg(log_msg);
     }
     
+    public void addPreformatted(String title, String txt)
+    {
+        long timestamp = System.currentTimeMillis();
+        DocmaLogMessage log_msg = new DocmaLogMessage(timestamp, LogLevel.INFO, txt);
+        log_msg.setType("pre");
+        if ((title != null) && !title.equals("")) {
+            log_msg.setTitle(title);
+        }
+        addLogMsg(log_msg);
+    }
+    
     public void clear()
     {
         logList.clear();
@@ -269,6 +280,7 @@ public class DefaultLog implements ExportLog
             }
             String gen = log_msg.getGenerator();
             String msgType = log_msg.getType();
+            String headline = log_msg.getTitle();
             StringBuilder line = new StringBuilder(msg.length() + 150);
             line.append("<message timestamp=\"")
                 .append(log_msg.getTimestamp())
@@ -279,13 +291,16 @@ public class DefaultLog implements ExportLog
             if ((msgType != null) && !msgType.equals("")) {
                 line.append(" type=\"").append(msgType).append("\"");
             }
+            if ((headline != null) && !headline.equals("")) {
+                line.append(" title=\"").append(toXMLAttribute(headline)).append("\"");
+            }
             line.append(">").append(msg) .append("</message>\n");
             writer.write(line.toString());
         }
         writer.write("</log>\n");
         writer.close();
     }
-
+    
     public static void loadFromXML(InputStream in, DefaultLog export_log) 
     throws IOException, DocException
     {
@@ -307,6 +322,7 @@ public class DefaultLog implements ExportLog
         final String ATT_SEVERITY = "severity";
         final String ATT_GENERATOR = "generator";
         final String ATT_TYPE = "type";
+        final String ATT_TITLE = "title";
         int searchpos = 0;
         List<String> attNames = new ArrayList();
         List<String> attValues = new ArrayList();
@@ -367,6 +383,12 @@ public class DefaultLog implements ExportLog
             if (idxType >= 0) {  // type attribute exists
                 msgType = attValues.get(idxType);
             }
+            
+            String msgTitle = null;
+            int idxTitle = attNames.indexOf(ATT_TITLE);
+            if (idxTitle >= 0) {  // title attribute exists
+                msgTitle = attValues.get(idxTitle);
+            }
 
             int msgend = logstr.indexOf("</message>", tagend);
             if (msgend < 0) {
@@ -377,6 +399,9 @@ public class DefaultLog implements ExportLog
             DocmaLogMessage logmsg = new DocmaLogMessage(timestamp, lev, msg, generator);
             if (msgType != null) {
                 logmsg.setType(msgType);
+            }
+            if (msgTitle != null) {
+                logmsg.setTitle(msgTitle);
             }
             export_log.addLogMsg(logmsg);
 
@@ -401,10 +426,12 @@ public class DefaultLog implements ExportLog
         StringWriter writer = new StringWriter();
         for (LogEntry log_msg : log_arr) {
             String msgType = log_msg.getType();
+            String msgTitle = log_msg.getTitle();
             String msg = log_msg.getMessage();
             msg = (msg == null) ? "" : msg.replace("<", "&lt;").replace(">", "&gt;");
             if ((msgType != null) && msgType.startsWith("header")) {
-                writeHeader(writer, msgType, msg);
+                String head = (msgTitle != null) ? msgTitle : msg;
+                writeHeader(writer, msgType, head);
                 continue;
             }
             writer.write("<div class=\"log_msg\">\n");
@@ -412,32 +439,54 @@ public class DefaultLog implements ExportLog
             if (level == null) {
                 level = LogLevel.INFO;
             }
-            String sev_str = level.name();
-            writer.write("<div class=\"msg_head_");
-            writer.write(sev_str.toLowerCase());
-            writer.write("\">");
             
-            Date dt = new Date(log_msg.getTimestamp());
-            String dt_str = dateformat.format(dt);
-            String generator = log_msg.getGenerator();
-            
-            writer.write("[");
-            writer.write(dt_str);
-            writer.write("] ");
-            writer.write(sev_str);
-            if ((generator != null) && !generator.equals("")) {
-                writer.write(" \"");
-                writer.write(generator);
-                writer.write("\"");
+            boolean isPre = (msgType != null) && msgType.equals("pre");
+            boolean hasTitle = (msgTitle != null) && !msgTitle.equals("");
+            if (hasTitle || (level != LogLevel.INFO) || !isPre) {
+                String sev_str = level.name();
+                writer.write("<div class=\"msg_head_");
+                writer.write(sev_str.toLowerCase());
+                writer.write("\">");
+                
+                if (hasTitle) {
+                    if (level != LogLevel.INFO) {
+                        writer.write(sev_str);
+                        writer.write(": ");
+                    }
+                    writer.write(msgTitle);
+                } else {
+                    Date dt = new Date(log_msg.getTimestamp());
+                    String dt_str = dateformat.format(dt);
+                    String generator = log_msg.getGenerator();
+
+                    writer.write("[");
+                    writer.write(dt_str);
+                    writer.write("] ");
+                    writer.write(sev_str);
+                    if ((generator != null) && !generator.equals("")) {
+                        writer.write(" \"");
+                        writer.write(generator);
+                        writer.write("\"");
+                    }
+                }
+                writer.write("</div>");
             }
-            writer.write("</div>");
             // writer.write("<br>");
             // String msg = log_msg.getMessage().replace('\n', ' ').replace('\r', ' ');
             // writer.write(msg);
             // writer.write("\n</p>\n");
-            writer.write("<pre class=\"msg_content\">");
-            writer.write(msg);
-            writer.write("</pre></div>\n");
+            if (msg.equals("")) {
+                writer.write("</div>\n");
+            } else {
+                writer.write("<pre class=\"");
+                if (isPre) {
+                    writer.write("msg_pre\">");
+                } else {
+                    writer.write("msg_content\">");
+                }
+                writer.write(msg);
+                writer.write("</pre></div>\n");
+            }
         }
         try {
             writer.close();
@@ -456,6 +505,11 @@ public class DefaultLog implements ExportLog
     }
 
     /* --------------  private methods  ---------------------- */
+
+    private String toXMLAttribute(String str)
+    {
+        return str.replace('"', '\'').replace('\n', ' ').replace('\r', ' ').replace('\f', ' ');
+    }
     
     private static void writeHeader(StringWriter writer, String msgType, String msg)
     {
@@ -473,7 +527,10 @@ public class DefaultLog implements ExportLog
             message = msg;
         }
         if ((location != null) && !location.equals("")) {
-            return location + ": \n" + message;
+            if (message.endsWith(".")) {
+                message = message.substring(0, message.length() - 1);
+            }
+            return message + ": \n" + location;
         } else {
             return message;
         }

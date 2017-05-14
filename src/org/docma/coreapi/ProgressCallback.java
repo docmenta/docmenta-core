@@ -56,6 +56,7 @@ public interface ProgressCallback
     int      getInfoCount();
 
     void     logHeader(int headLevel, String msg, Object... args);
+    void     logText(String headline, String txt);
     
     int getLogCount();
     LogEntry[] getLog();
