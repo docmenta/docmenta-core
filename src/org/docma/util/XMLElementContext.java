@@ -14,6 +14,7 @@ public interface XMLElementContext
     String getAttributeValue(int idx);
     String getAttributeValue(String attName);
     int getCharacterOffset();
+    String getElement();
     String getElementContent();
     
     void replaceElement(String xml);

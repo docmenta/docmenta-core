@@ -104,5 +104,14 @@ public class XMLUtil
         return retlist;
     }
     
+    public static String escapeDoubleQuotedCDATA(String value) 
+    {
+        return value.replace("\"", "&quot;");
+    }
+
+    public static String escapePCDATA(String value) 
+    {
+        return value.replace("<", "&lt;").replace(">", "&gt;");
+    }
 
 }

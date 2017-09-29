@@ -188,17 +188,20 @@ public class SimpleXMLProcessor implements XMLProcessor
             if (nextType == XMLParser.START_ELEMENT) {
                 String tagName = xmlParser.getElementName();
                 String key = elementKey(tagName);
-                if ((default_handler != null) || handlers.containsKey(key)) {
+                boolean isEmpty = xmlParser.isEmptyElement();
+                boolean hasHandler = (default_handler != null) || handlers.containsKey(key);
+                if (hasHandler || (! isEmpty)) {
                     int tagStart = xmlParser.getStartOffset();
                     int tagEnd = xmlParser.getEndOffset();
-                    boolean isEmpty = xmlParser.isEmptyElement();
                     List<String> attNames = new ArrayList<String>();
                     List<String> attValues = new ArrayList<String>();
                     xmlParser.getAttributes(attNames, attValues);
                     XMLElementContextImpl ctx = 
                       new XMLElementContextImpl(input, tagStart, tagEnd, isEmpty, tagName, attNames, attValues);
                     ctx.setIgnoreAttributeCase(ignoreAttributeCase);
-                    elements.add(ctx);
+                    if (hasHandler) {
+                        elements.add(ctx);
+                    }
                     if (! isEmpty) {
                         openElements.addLast(ctx);
                     }

@@ -141,6 +141,15 @@ public class XMLElementContextImpl implements XMLElementContext
         return openTagStart;
     }
 
+    public String getElement()
+    {
+        if (emptyElement || (closeTagEnd <= openTagEnd)) {
+            return input.substring(openTagStart, openTagEnd);
+        } else {
+            return input.substring(openTagStart, closeTagEnd);
+        }
+    }
+    
     public String getElementContent() 
     {
         if (emptyElement || (closeTagStart <= openTagEnd)) {
