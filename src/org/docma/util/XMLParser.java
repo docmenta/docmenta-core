@@ -318,6 +318,9 @@ public class XMLParser
                     nameList.add(name);
                     valueList.add(value);
                     state = SEARCH_NAME_START;
+                } else 
+                if (ch == '<') {  // is not allowed in attribute value; has to be escaped as &lt;
+                    return -offset;  // negative value means invalid syntax
                 }
             }
             ++offset;  // read next char

@@ -1371,7 +1371,7 @@ public class DocStoreUtilities
             try {
                 verifyVersionNode(sourceSession.getRoot(), targetSession.getRoot(), extended, progress, stats, 0);
                 if (stats.verifyErrors > MAX_VERIFY_ERRORS) {
-                    progress.logInfo("text.copy_store_verify_exceeded_max_errors", MAX_VERIFY_ERRORS, stats.verifyErrors);
+                    progress.logInfo("text.copy_store_verify_exceeded_max_errors", verId.toString(), MAX_VERIFY_ERRORS, stats.verifyErrors);
                 }
             } finally {
                 progress.finishWork();
