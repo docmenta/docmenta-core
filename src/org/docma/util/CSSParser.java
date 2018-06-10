@@ -21,6 +21,23 @@ import java.util.*;
  */
 public class CSSParser 
 {
+    public static String propertiesToString(Map<String, String> css_props)
+    {
+        if ((css_props == null) || css_props.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        boolean sep = false;
+        for (String name : css_props.keySet()) {
+            if (sep) {
+                sb.append(" ");
+            }
+            sb.append(name).append(":").append(css_props.get(name)).append(";");
+            sep = true;
+        }
+        return sb.toString();
+    }
+    
     public static SortedMap<String, String> parseCSSProperties(String css_props)
     {
         SortedMap<String, String> res = new TreeMap<String, String>();

@@ -189,12 +189,30 @@ public class XMLParser
         }
     }
 
+    public void getAttributesLower(List names, List values)
+    {
+        getAttributes(names, values);
+        for (int i = 0; i < names.size(); i++) {
+            names.set(i, names.get(i).toString().toLowerCase());
+        }
+    }
+
     public void getAttributes(Map<String, String> attMap)
     {
         if (nextType == START_ELEMENT) {
             attMap.clear();
             for (int i = 0; i < attNames.size(); i++) {
                 attMap.put(attNames.get(i), attValues.get(i));
+            }
+        }
+    }
+
+    public void getAttributesLower(Map<String, String> attMap)
+    {
+        if (nextType == START_ELEMENT) {
+            attMap.clear();
+            for (int i = 0; i < attNames.size(); i++) {
+                attMap.put(attNames.get(i).toLowerCase(), attValues.get(i));
             }
         }
     }

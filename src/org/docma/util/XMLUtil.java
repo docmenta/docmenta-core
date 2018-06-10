@@ -17,9 +17,15 @@
 
 package org.docma.util;
 
+import java.io.StringReader;
 import java.util.*;
 import java.util.regex.Pattern;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpression;
+import javax.xml.xpath.XPathFactory;
 import org.w3c.dom.*;
+import org.xml.sax.InputSource;
 
 /**
  *
@@ -27,6 +33,30 @@ import org.w3c.dom.*;
  */
 public class XMLUtil 
 {
+    private static XPathFactory xpathFactory = null;
+
+    private static synchronized void initXPath() 
+    {
+        if (xpathFactory == null) {
+            xpathFactory = XPathFactory.newInstance();
+        }
+    }
+
+    public static XPathExpression compileXPath(String expression) throws Exception 
+    {
+        if (xpathFactory == null) initXPath();
+        
+        XPath xpath = xpathFactory.newXPath();
+        return xpath.compile(expression);
+    }
+
+    public static boolean evalXPathToBoolean(String xml, String xpath) throws Exception 
+    {
+        XPathExpression xe = compileXPath(xpath);
+        Object res = xe.evaluate(new InputSource(new StringReader(xml)), XPathConstants.BOOLEAN);
+        return Boolean.TRUE.equals(res);
+    }
+
     public static boolean attributeValueExists(String xml, 
                                                String elementName, 
                                                String attributeName, 
