@@ -35,13 +35,6 @@ public class XMLUtil
 {
     private static XPathFactory xpathFactory = null;
 
-    private static synchronized void initXPath() 
-    {
-        if (xpathFactory == null) {
-            xpathFactory = XPathFactory.newInstance();
-        }
-    }
-
     public static XPathExpression compileXPath(String expression) throws Exception 
     {
         if (xpathFactory == null) initXPath();
@@ -57,6 +50,37 @@ public class XMLUtil
         return Boolean.TRUE.equals(res);
     }
 
+    public static String addCSSClass(String content, String elementName, String cssCls) throws Exception
+    {
+        if ((cssCls == null) || cssCls.equals("") || (elementName == null) || elementName.equals("")) {
+            return content;   // content is unchanged
+        }
+        
+        XMLProcessor xmlproc = XMLProcessorFactory.newInstance();
+        xmlproc.setCheckWellformed(true);
+        xmlproc.setIgnoreElementCase(true);
+        xmlproc.setElementHandler(elementName, new AddCSSClsHandler(elementName, cssCls));
+        StringBuilder out = new StringBuilder();
+        xmlproc.process(content, out);
+        return out.toString();
+    }
+
+    public static String removeCSSClass(String content, String elementName, String cssCls) throws Exception
+    {
+        // Remove figure class
+        if ((cssCls == null) || cssCls.equals("") || (elementName == null) || elementName.equals("")) {
+            return content;   // content is unchanged
+        }
+        
+        XMLProcessor xmlproc = XMLProcessorFactory.newInstance();
+        xmlproc.setCheckWellformed(true);
+        xmlproc.setIgnoreElementCase(true);
+        xmlproc.setElementHandler(elementName, new RemoveCSSClsHandler(elementName, cssCls));
+        StringBuilder out = new StringBuilder();
+        xmlproc.process(content, out);
+        return out.toString();
+    }
+    
     public static boolean attributeValueExists(String xml, 
                                                String elementName, 
                                                String attributeName, 
@@ -142,6 +166,80 @@ public class XMLUtil
     public static String escapePCDATA(String value) 
     {
         return value.replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    
+    /* --------------  Private methods  ---------------------- */
+    
+    private static synchronized void initXPath() 
+    {
+        if (xpathFactory == null) {
+            xpathFactory = XPathFactory.newInstance();
+        }
+    }
+
+
+    //
+    // Private Helper classes 
+    // 
+    
+    private static class AddCSSClsHandler implements XMLElementHandler
+    {
+        private String elementName;
+        private String cssCls;
+        
+        public AddCSSClsHandler(String elemName, String cssCls)
+        {
+            this.elementName = elemName;
+            this.cssCls = cssCls;
+        }
+        
+        public void processElement(XMLElementContext elemCtx) 
+        {
+            String ename = elemCtx.getElementName();
+            if (! ename.equalsIgnoreCase(elementName)) {
+                return;   // do nothing
+            }
+            
+            String clsVal = elemCtx.getAttributeValue("class");
+            if (clsVal == null) {
+                elemCtx.setAttribute("class", cssCls);
+            } else {
+                clsVal = clsVal.trim();
+                if (! (" " + clsVal + " ").contains(" " + cssCls + " ")) {
+                    elemCtx.setAttribute("class", clsVal + " " + cssCls);
+                }
+            }
+        }
+    }
+
+    private static class RemoveCSSClsHandler implements XMLElementHandler
+    {
+        private String elementName;
+        private String cssCls;
+        
+        public RemoveCSSClsHandler(String elemName, String cssCls)
+        {
+            this.elementName = elemName;
+            this.cssCls = cssCls;
+        }
+        
+        public void processElement(XMLElementContext elemCtx) 
+        {
+            String ename = elemCtx.getElementName();
+            if (! ename.equalsIgnoreCase(elementName)) {
+                return;   // do nothing
+            }
+            
+            String clsVal = elemCtx.getAttributeValue("class");
+            if (clsVal != null) {
+                clsVal = clsVal.trim();
+                String clsNew = (" " + clsVal + " ").replace(" " + cssCls + " ", " ").trim();
+                if (! clsVal.equals(clsNew)) {
+                    elemCtx.setAttribute("class", clsNew.equals("") ? null : clsNew);
+                }
+            }
+        }
     }
 
 }

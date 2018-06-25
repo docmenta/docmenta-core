@@ -15,7 +15,9 @@
 package org.docma.util;
 
 import java.text.NumberFormat;
+import java.util.ArrayList;
 import java.util.Locale;
+import java.util.StringTokenizer;
 
 /**
  *
@@ -25,6 +27,22 @@ public class CSSUtil
 {
     private static NumberFormat numberFormat = null;
 
+    
+    public static String mergeCSSClasses(String... clsNames) 
+    {
+        ArrayList<String> res = new ArrayList<String>();
+        for (String val : clsNames) {
+            if (val != null) {
+                StringTokenizer st = new StringTokenizer(val);
+                while (st.hasMoreTokens()) {
+                    String clsName = st.nextToken();
+                    if (! res.contains(clsName)) res.add(clsName);
+                }
+            }
+        }
+        return DocmaUtil.concatStrings(res, " ");
+    }
+    
     public static float getSizeFloat(String padd)
     {
         int idx = padd.length() - 1;
